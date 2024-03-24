@@ -1,0 +1,36 @@
+<html>
+
+<head>
+    <title>
+        arrow
+    </title>
+</head>
+
+<body>
+    <script>
+        function taskA() {
+            console.log("Task A");
+        }
+
+        function taskB() {
+            console.log("Task B");
+            throw new Error("taskB掉坑里了");
+        }
+
+        function onRejected(error) {
+            console.log("onRejected catch Error: A or B", error);
+        }
+
+        function finalTask() {
+            console.log("Final Task");
+        }
+        var promise = Promise.resolve();
+        promise.then(taskA)
+            .then(taskB)
+            .catch(onRejected)
+            .then(finalTask);
+
+    </script>
+</body>
+
+</html>
