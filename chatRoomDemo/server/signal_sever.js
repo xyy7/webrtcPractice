@@ -127,10 +127,7 @@ function handleJoin(message, conn) {
     var client = new Client(uid, conn, roomId);
     roomMap.put(uid, client);
 
-   
-    
     if (roomMap.size() > 1) {
-        
         // 房问里面已经有人了，加上新进来的人，那就是>=2了，所以要通知对方
         var clients = roomMap.getEntrys();
         for (var i in clients) {
@@ -156,12 +153,13 @@ function handleJoin(message, conn) {
 
         }
     }
+    return client
 }
 
 function handleLeave(message) {
     var roomId = message.roomId;
     var uid = message.uid;
-    console.info("uid:" + uid + "leave room " + roomId);
+    console.info("uid:" + uid + " leave room " + roomId);
     var roomMap = roomTableMap.get(roomId);
     if (roomMap == null) {
         console.error("handleLeave can't find then roomId " + roomId);
@@ -174,7 +172,7 @@ function handleLeave(message) {
         for (var i in clients) {
             var jsonMsg = {
                 'cmd': SIGNAL_TYPE_PEER_LEAVE,
-                'remoteuid': uid, // 谁离开就填写谁
+                'remoteUid': uid, // 谁离开就填写谁
             };
             var msg = JSON.stringify(jsonMsg);
             var remoteUid = clients[i].key;
@@ -186,6 +184,42 @@ function handleLeave(message) {
         }
     }
 }
+
+function handleForceLeave(client) {
+    var roomId = client.roomId;
+    var uid = client.uid;
+    console.info("uid:" + uid + " force leave room " + roomId);
+    var roomMap = roomTableMap.get(roomId);
+    if (roomMap == null) {
+        console.warn("handleForceLeave can't find then roomId " + roomId);
+        return;
+    }
+    if (!roomMap.contains(uid)) {
+        console.info("uid " + uid + " have leave room.");
+        return;
+    }
+
+    roomMap.remove(uid);
+    if (roomMap.size() >= 1) {
+        // 删除发送者
+        var clients = roomMap.getEntrys();
+        for (var i in clients) {
+            var jsonMsg = {
+                'cmd': SIGNAL_TYPE_PEER_LEAVE,
+                'remoteUid': uid, // 谁离开就填写谁
+            };
+            var msg = JSON.stringify(jsonMsg);
+            var remoteUid = clients[i].key;
+            var remoteclient = roomMap.get(remoteUid);
+            if (remoteclient) {
+                console.info("notify peer:" + remoteclient.uid + ",uid:" + uid + " leave");
+                remoteclient.conn.sendText(msg);
+            }
+        }
+    }
+}
+
+
 
 function handleOffer(message) {
     var roomId = message.roomId;
@@ -263,6 +297,7 @@ var server = ws.createServer(function (conn) {
     console.log("创建一个新的连接--------");
     // console.log("我收到你的连接了---------");
     //向客户端推送消息
+    conn.client = null
     conn.on("text", function (str) {
         // console.log("recv msg" + str);
 
@@ -270,7 +305,7 @@ var server = ws.createServer(function (conn) {
         console.log("recv msg cmd " +jsonMsg.cmd); 
         switch (jsonMsg.cmd) {
             case SIGNAL_TYPE_JOIN:
-                handleJoin(jsonMsg, conn);
+                conn.client = handleJoin(jsonMsg, conn);
                 break;
             case SIGNAL_TYPE_LEAVE:
                 handleLeave(jsonMsg, conn);
@@ -290,6 +325,9 @@ var server = ws.createServer(function (conn) {
     //监听关闭连接操作
     conn.on("close", function (code, reason) {
         console.log("关闭连接");
+        if (conn.client != null) {
+            handleForceLeave(conn.client);
+        }
     })
     //错误处理
     conn.on("error", function (err) {

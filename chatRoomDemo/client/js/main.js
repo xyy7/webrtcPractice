@@ -150,11 +150,35 @@ function doLeave() {
     zeroRTCEngine.sendMessage(message);
     // console.info("doLeave message: " + message);
     console.info("doLeave message");
+    hangup();
+}
+
+function hangup() {
+    localVideo.srcObject = null; //0.不显示自己
+    remoteVideo.srcObject = null; //1.不显示对方
+    closeLocalStream(); //2.关闭本地流
+    if (pc != null) {
+        pc.close(); //3.关闭RTCPeerconnection
+        pc = null;
+    }
+}
+    
+function closeLocalStream() {
+    if (localStream != null) {
+        localStream.getTracks().forEach((track) => {
+            track.stop();
+        });
+    }
 }
 
 function handleRemotePeerLeave(message) {
     console.info("handleRemotePeerLeave,remoteUid:" + message.remoteUid);
-    remoteVideo.srcobject =null;
+    remoteVideo.srcObject = null;
+    remoteStream = null;
+    if (pc != null) {
+        pc.close();
+        pc = null;
+    }
 }
 
 
@@ -184,7 +208,25 @@ function handleRemoteStreamAdd(event) {
 }
 
 function createPeerConnection() {
-    pc = new RTCPeerConnection(null);
+    var defaultConfiguration = {
+        bundlePolicy: "max-bundle",
+        rtcpMuxPolicy: "require",
+        iceTransportPolicy: "all", //relay all// 修改ice数组测试效果，需要进行封装
+        iceServers: [{
+            "urls": [
+                "turn:106.52.100.45:3478?transport=udp",
+                "turn:106.52.100.45:3478?transport=tcp"],
+                "username": "xyy",
+                "credential": "qq2774626",
+            },
+            {
+                "urls": ["stun:106.52.100.45:3478"]
+            }
+        ]
+    }
+
+    // pc = new RTCPeerConnection(defaultConfiguration);
+    pc = new RTCPeerConnection(defaultConfiguration);
     pc.onicecandidate = handleIceCandidate;
     pc.ontrack = handleRemoteStreamAdd;
     localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
