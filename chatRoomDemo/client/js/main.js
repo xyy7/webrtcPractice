@@ -211,22 +211,37 @@ function createPeerConnection() {
     var defaultConfiguration = {
         bundlePolicy: "max-bundle",
         rtcpMuxPolicy: "require",
-        iceTransportPolicy: "all", //relay all// 修改ice数组测试效果，需要进行封装
-        iceServers: [{
-            "urls": [
-                "turn:106.52.100.45:3478?transport=udp",
-                "turn:106.52.100.45:3478?transport=tcp"],
+        iceTransportPolicy: "relay", //relay all// 修改ice数组测试效果，需要进行封装
+        // iceServers: [
+        //     {
+        //         "urls": [
+        //             "turn:106.52.100.45:3478?transport=udp",
+        //             "turn:106.52.100.45:3478?transport=tcp"
+        //         ],
+        //         "username": "xyy",
+        //         "credential": "qq2774626",
+        //     },
+        //     {
+        //         "urls": ["stun:106.52.100.45:3478"]
+        //     }
+        // ]
+        iceServers: [
+            {
+                "urls": [
+                    "turn:172.31.224.90:3478?transport=udp",
+                    "turn:172.31.224.90:3478?transport=tcp"
+                ],
                 "username": "xyy",
                 "credential": "qq2774626",
             },
             {
-                "urls": ["stun:106.52.100.45:3478"]
+                "urls": ["stun:172.31.224.90:3478"]
             }
         ]
     }
 
-    // pc = new RTCPeerConnection(defaultConfiguration);
     pc = new RTCPeerConnection(defaultConfiguration);
+    // pc = new RTCPeerConnection(null);
     pc.onicecandidate = handleIceCandidate;
     pc.ontrack = handleRemoteStreamAdd;
     localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
@@ -306,7 +321,7 @@ function handleRemoteAnswer(message) {
 function handleRemoteCandidate(message) { 
     console.info("handleRemoteCandidate");
     var candidate = JSON.parse(message.msg);
-    console.log("set candidate: " + candidate);
+    console.log("set remote candidate: " + candidate);
     pc.addIceCandidate(candidate)
         .catch(e => {
             console.error("addIceCandidate failed:" + e.name)
